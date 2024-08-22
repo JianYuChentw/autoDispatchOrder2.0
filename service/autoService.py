@@ -71,6 +71,7 @@ def searchCasePage(driver):
     print('取得searchCase位置')
 
 
+
 # 執行預約
 
 def main():

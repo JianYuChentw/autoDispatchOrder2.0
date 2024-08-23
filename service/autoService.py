@@ -1,12 +1,19 @@
 import time
 import os
+import sys
+
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from dotenv import load_dotenv
 from selenium import webdriver
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.by import By
+from selenium.webdriver.common.keys import Keys
 from autoSettings import page_data  
+from util import load_json
 
+
+print(os.getcwd())
 # 加載環境變數
 load_dotenv()
 
@@ -72,7 +79,72 @@ def searchCasePage(driver):
 
 
 
-# 執行預約
+# 批量執行去程預約
+def batchDeparTureReserve(driver, jsonData):
+
+
+    searchCaseInputXpath = page_data['searchCaseInput']
+    reserveBtnXpath = page_data['reserveBtn']
+    dateInputXpath = page_data['dateInput']
+    timeInputXpath = page_data['timeInput']
+    destinationInputXpath = page_data['destinationInput']
+    destinationTypeInputXpath = page_data['destinationTypeInput']
+    trueRideTogetherXpath = page_data['trueRideTogether']
+    carTypeInputXpath = page_data['carTypeInput']
+    wheelchairTypeInputXpath = page_data['wheelchairTypeInput']
+    numberOfPeopleInputXpath = page_data['numberOfPeopleInput']
+    remarkInputXpath = page_data['remarkInput']
+    implementReserveBtnXpath = page_data['implementReserveBtn']
+    trueReserveHintXpath = page_data['trueReserveHint']
+
+
+
+    for obj in jsonData:
+        searchCaseInput = driver.find_element(By.XPATH, searchCaseInputXpath)
+        searchCaseInput.send_keys(obj['ID'], Keys.ENTER)
+
+        reserveBtn = WebDriverWait(driver, 10).until(
+            EC.visibility_of_element_located((By.XPATH, reserveBtnXpath))
+        )
+        reserveBtn.click()
+
+        dateInput = WebDriverWait(driver, 10).until(
+            EC.visibility_of_element_located((By.XPATH, dateInputXpath))
+        )
+        dateInput.send_keys(obj['Date'], Keys.TAB)
+
+        driver.switch_to.active_element.send_keys(obj['Time'])
+        
+        driver.switch_to.active_element.send_keys(Keys.TAB)
+        driver.switch_to.active_element.send_keys(Keys.TAB)
+        driver.switch_to.active_element.send_keys(Keys.TAB)
+        
+
+        driver.switch_to.active_element.send_keys(obj['destination'])
+        driver.switch_to.active_element.send_keys(Keys.TAB)
+        
+        driver.switch_to.active_element.send_keys(obj['醫院診所'])
+
+        
+        trueRideTogether = driver.find_element(By.XPATH, trueRideTogetherXpath)
+        trueRideTogether.click()
+
+        carTypeInput = driver.find_element(By.XPATH, carTypeInputXpath)
+        carTypeInput.send_keys(obj['accompany1'])
+
+        
+        wheelchairTypeInput = driver.find_element(By.XPATH, wheelchairTypeInputXpath)
+        wheelchairTypeInput.send_keys(obj['wheelchairType'])
+
+        numberOfPeopleInput = driver.find_element(By.XPATH, numberOfPeopleInputXpath)
+        numberOfPeopleInput.send_keys(2)
+
+
+        remarkInput = driver.find_element(By.XPATH, remarkInputXpath)
+        remarkInput.send_keys(obj['accompany2'])
+
+        time.sleep(5)
+# def batchReturnTripReserve(driver, jsonData):
 
 def main():
     # 啟用 WebDriver
@@ -83,6 +155,8 @@ def main():
         login(driver)
  
         searchCasePage(driver)
+        jsonData = load_json('json_save/DeparTure.json')
+        batchDeparTureReserve(driver, jsonData)
         time.sleep(5)
     finally:
         # 確保不管發生什麼都會關閉瀏覽器

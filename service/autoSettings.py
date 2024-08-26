@@ -1,6 +1,6 @@
 page_data = {
     # 登入主頁
-    "loginPage": "https://khh.mass.org.tw/dashboard/Login",
+    "loginUrl": "https://khh.mass.org.tw/dashboard/Login",
     
     # 帳號輸入
     "accountInput":"//*[@id='root']/div/div/div[1]/div[2]/div/div/div/div[2]/div[3]/div[3]/div[3]/div/div[1]/div[2]/div/div/div/div/form/div[1]/div/div[2]/input",
@@ -24,16 +24,19 @@ page_data = {
     #搜尋欄 
     "searchCaseInput":"//*[@id='root']/div[6]/div/div[2]/div/div/div[1]/div[2]/div/div/div/div/form/div/div[1]/div[2]/input",
 
+    #搜尋按鈕 
+    "searchCaseBtn":"//*[@id='root']/div[6]/div/div[2]/div/div/div[1]/div[2]/div/div/div/div/form/div/div[1]/div[2]/svg",
+
     # 選擇首位預約按鈕
     "reserveBtn":"//*[@id='root']/div[7]/div/div[1]/div[2]/div/div/div/div/div/div/div/div/div/div/div/div[2]/table/tbody/tr[2]/td[2]/button",
 
     # 乘車日期欄
-    "dateInput":"//*[@id='root']/div[7]/div/div[1]/div[2]/div/div/div/div/div[1]/div[3]/div[2]/div/div[1]/div[2]/div/div/div/div[1]/form/div/div[1]/div[2]/div/div/input",
+    "dateInput":"//*[@id='root']/div[7]/div/div[1]/div[2]/div/div/div/div/div[1]/div[3]/div[2]/div/div[1]/div[2]/div/div/div/div/form/div/div[1]/div[2]/div/div/input",
 
     # 時間欄
-    "timeInput":"/html/body/div/div[5]/div/div[1]/div[2]/div/div/div/div/div[1]/div[3]/div[2]/div/div[1]/div[2]/div/div/div/div[1]/form/div/div[2]/div[2]/div/div/span[1]/input",
+    "timeInput":"//*[@id='rc_select_74']",
 
-
+    
     # 起迄點交換鍵
     "startingEndInterchangeBtn":"//*[@id='root']/div[7]/div/div[1]/div[2]/div/div/div/div/div[1]/div[3]/div[2]/div/div[1]/div[2]/div/div/div/div[1]/form/div/div[3]/div[1]/div",
 

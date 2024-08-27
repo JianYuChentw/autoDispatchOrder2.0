@@ -2,23 +2,17 @@ import time
 import os
 import sys
 import requests
-
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from dotenv import load_dotenv
 from autoSettings import page_data  
 from util import load_json
 
 
-print(os.getcwd())
 # 加載環境變數
 load_dotenv()
-user_account = os.getenv('USER_ACCOUNT')
-user_password = os.getenv('USER_PASSWORD')
-appKey = os.getenv('APPKEY')
-
 
 def loginGetToken(account, password, appKey):
-    url = "https://khh.mass.org.tw/api/check/login"
+    url = page_data["loginApi"]
 
     payload = {
         "Account": account,
@@ -47,7 +41,7 @@ def loginGetToken(account, password, appKey):
 
 def getUsersId(key, token, userType="", page=1, limit=10):
     # API 目標地址
-    base_url = "https://khh.mass.org.tw/api/users/loadwithtype"
+    url = page_data["userIdApi"]
     
     # 構建請求參數
     params = {
@@ -64,16 +58,15 @@ def getUsersId(key, token, userType="", page=1, limit=10):
 
     try:
         # 發送 GET 請求
-        response = requests.get(base_url, params=params, headers=headers)
+        response = requests.get(url, params=params, headers=headers)
 
         # 檢查響應狀態碼
         if response.status_code == 200:
-            print("請求成功，響應內容如下：")
             data = response.json()  
             # 提取 ID
             if data.get('code') == 200 and 'data' in data:
                 ids = data['data'][0]['caseList'][0]['caseId']
-                print(f"獲取到的caseId: {ids[0]}")
+                print(f"獲取到的caseId: {ids}")
                 return int(ids)
             else:
                 print("未找到有效的使用者數據")
@@ -86,8 +79,8 @@ def getUsersId(key, token, userType="", page=1, limit=10):
         return None
 
 def getUidGrouop(id, token):
-    # API 目標地址
-    base_url = "https://khh.mass.org.tw/api/caseusers/get"
+
+    url = page_data["userIdGroupApi"]
     
     # 構建請求參數
     params = {
@@ -100,20 +93,112 @@ def getUidGrouop(id, token):
     }
 
     try:
-        # 構建請求物件
-        req = requests.Request('GET', base_url, params=params, headers=headers)
-        prepared = req.prepare()
-
-        # 打印最終的 URL
-        print(f"最終發出的請求 URL: {prepared.url}")
-
         # 發送 GET 請求
-        response = requests.Session().send(prepared)
+        response = requests.get(url, params=params, headers=headers)
 
         # 檢查響應狀態碼
         if response.status_code == 200:
-            print("請求成功，響應內容如下：")
-            return response.json()  # 返回解析後的 JSON 響應
+            result = response.json()  # 解析後的 JSON 響應
+            data = result['result']
+            # 篩選並調整資料
+            if "userId" in data and "caseUserId" in data and "orgBId1" in data:
+                userId = data["userId"]
+                caseUserId = data["caseUserId"]
+                orgBId1 = data["orgBId1"]
+                fromAddr = f"{data.get('county', '')}{data.get('district', '')}{data.get('addr', '')}"
+
+                result = {
+                    "userId": userId,
+                    "caseUserId": caseUserId,
+                    "orgBId1": orgBId1,
+                    "fromAddr": fromAddr,
+                    "fromAddrRemark":"住家"
+                }
+                return result
+            else:
+                print("響應資料中缺少必要欄位")
+                return None
+        else:
+            print(f"請求失敗，狀態碼：{response.status_code}")
+            return None
+    except requests.exceptions.RequestException as e:
+        print(f"請求時發生錯誤: {e}")
+        return None
+
+def processReservationDataList(dataList):
+    processedList = []
+    
+    for data in dataList:
+        ID = data['ID']
+        CaseName = data['CaseName']
+        reserveDate = f"{data['Date']} {data['Time']}"    
+        toAddr = data['destination']
+        wheelchairType = data["wheelchairType"]
+        remark = data["accompany2"]
+        
+        if data['accompany1'] == '一般車':
+            carCategoryId = 'SYS_CAR_GENERAL'
+            carCategoryName = "普通車"
+        elif data['accompany1'] == '福祉車':
+            carCategoryId = 'SYS_CAR_WEAL'
+            carCategoryName = "福祉車"
+        else:
+            carCategoryId = data['accompany1']  # 如果是其他值，保持原樣
+            carCategoryName = "其他車型"  # 根据具体需求设置默认名称
+
+        # 組合結果
+        processedData = {
+            "ID":ID,
+            "CaseName":CaseName,
+            "reserveDate": reserveDate,
+            "toAddr": toAddr,
+            "carCategoryId": carCategoryId,
+            "carCategoryName": carCategoryName,
+            "wheelchairType": wheelchairType,
+            "remark": remark
+        }
+        
+        processedList.append(processedData)
+    
+    return processedList
+
+def addProcess( token, systemData, reservationData):
+    
+    url = page_data["reservationApi"]
+
+    data = {
+        "userId": systemData["userId"],
+        "caseUserId": systemData["caseUserId"],
+        "orgId": systemData["orgBId1"],
+        "reserveDate": reservationData["reserveDate"],
+        "transOrgs": [systemData["orgBId1"]],
+        "fromAddr": systemData["fromAddr"],
+        "fromAddrRemark":  systemData["fromAddrRemark"],
+        "toAddr": reservationData["toAddr"],
+        "toAddrRemark": "醫院診所",
+        "remark": reservationData["remark"],
+        "isBack": False,
+        "canShared": True,
+        "carCategoryId": reservationData["carCategoryId"],
+        "carCategoryName": reservationData["carCategoryName"],
+        "wheelchairType": reservationData["wheelchairType"],
+        "familyWith": 1,
+        "haveNextOrderFlag":  False,
+        "isBackOrder": True
+    }
+    
+    headers = {
+        "Content-Type": "application/json",
+        "X-Token": token  # 使用從登入獲取的 token
+    }
+
+    try:        
+        response = requests.post(url, json=data, headers=headers)
+
+        if response.status_code == 200:
+            result = response.json()
+            # print(reservationData["CaseName"],"處理完成，回應：",result["message"])
+            return {'code':result["code"],'date':reservationData["reserveDate"], "id":reservationData["ID"], "caseName":reservationData["CaseName"], 'message':result["message"]}  
         else:
             print(f"請求失敗，狀態碼：{response.status_code}")
             return None
@@ -122,17 +207,26 @@ def getUidGrouop(id, token):
         return None
 
 
+#### 測試區
+user_account = os.getenv('USER_ACCOUNT')
+user_password = os.getenv('USER_PASSWORD')
+appKey = os.getenv('APPKEY')
+jsonData = load_json('json_save/DeparTure.json')
 
 # 使用示例
-login_response = loginGetToken("khccomp004", "Aa12345678", "SYS_USERTYPE_ADMIN")
+login_response = loginGetToken(user_account, user_password, appKey)
+reservationDatas = processReservationDataList(jsonData)
 
 if login_response and "token" in login_response:
     token = login_response["token"]  # 獲取登入返回的 token
     # 使用獲取到的 token 進行使用者資訊查詢
-    uid = getUsersId(key="E120230198", token=token)
-    print(type(uid))
-    uidGroup = getUidGrouop(uid, token) 
-    print(uidGroup)
+ 
+    for reservationData in reservationDatas:
+     
+        uid = getUsersId(reservationData["ID"], token=token)
+        uidGroup = getUidGrouop(uid, token) 
+        print(addProcess(token, uidGroup, reservationData))
+        
     
 
 else:

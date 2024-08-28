@@ -5,22 +5,22 @@ class StatusBar(QHBoxLayout):
     def __init__(self, status_manager):
         super().__init__()
         self.status_manager = status_manager
-        self.setSpacing(30)
+        self.setSpacing(20)
         
         # 登入狀態標籤
         self.login_status_label = QLabel(f"登入狀態：{self.status_manager.get_login_status()}")
-        self.login_status_label.setStyleSheet("font-size: 16px;")
+        self.login_status_label.setStyleSheet("font-size: 20px;")
         self.addWidget(self.login_status_label)
 
         # 文件處理狀態標籤
         self.file_status_label = QLabel(f"文件狀態：{self.status_manager.get_file_status()}")
-        self.file_status_label.setStyleSheet("font-size: 16px;")
+        self.file_status_label.setStyleSheet("font-size: 20px;")
         self.addWidget(self.file_status_label)
 
         # 預留按鈕
         self.reserved_button = QPushButton("預留按鈕")
         self.reserved_button.setFixedSize(150, 40)
-        self.reserved_button.setStyleSheet("font-size: 16px;")
+        self.reserved_button.setStyleSheet("font-size: 20px;")
         self.addWidget(self.reserved_button)
 
         # 連接狀態管理器的信號到更新方法
@@ -39,6 +39,7 @@ class StatusManager(QObject):
         super().__init__()
         self._login_status = "未登入"
         self._file_status = "未處理"
+        self.token = None
 
     def update_login_status(self, status):
         self._login_status = status

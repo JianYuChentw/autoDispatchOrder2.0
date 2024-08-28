@@ -1,11 +1,11 @@
 import time
 import os
 import sys
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+# sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from dotenv import load_dotenv
-from autoSettings import page_data  
+from service.autoSettings import page_data  
 from util import (load_json, processReservationDataList)
-from apiService import (sendPostRequest, sendGetRequest )
+from service.apiService import (sendPostRequest, sendGetRequest )
 
 
 # 加載環境變數
@@ -14,8 +14,9 @@ load_dotenv()
 def loginGetToken(payload):
     url = page_data["loginApi"]
     response = sendPostRequest(url, payload)
+    responseData = response.json()
     
-    if response:
+    if responseData["code"] == 200:
         print("登入成功，Token為：", response.json()['token'])
         return response.json()
     else:
@@ -36,13 +37,12 @@ def getUsersId(IdKey, token):
     
     if response:
         data = response.json()
+        if data['count']<1:
+            return None
         if data.get('code') == 200 and 'data' in data:
             ids = data['data'][0]['caseList'][0]['caseId']
             print(f"獲取到的caseId: {ids}")
             return int(ids)
-        else:
-            print("未找到有效的使用者數據")
-            return None
     else:
         print("請求失敗")
         return None
@@ -120,26 +120,29 @@ def addProcess(token, systemData, reservationData):
 
 #### 測試區
 
-jsonData = load_json('json_save/DeparTure.json')
-payload = {
-        "Account": os.getenv('USER_ACCOUNT'),
-        "Password": os.getenv('USER_PASSWORD'),
-        "AppKey": os.getenv('APPKEY')
-    }
-# 使用示例
-login_response = loginGetToken(payload)
-reservationDatas = processReservationDataList(jsonData)
+# jsonData = load_json('json_save/DeparTure.json')
+# payload = {
+#         "Account": os.getenv('USER_ACCOUNT'),
+#         "Password": os.getenv('USER_PASSWORD'),
+#         "AppKey": os.getenv('APPKEY')
+#     }
+# # 使用示例
+# login_response = loginGetToken(payload)
+# reservationDatas = processReservationDataList(jsonData)
 
-if login_response and "token" in login_response:
-    token = login_response["token"]  # 獲取登入返回的 token
-    # 使用獲取到的 token 進行使用者資訊查詢
+# if login_response and "token" in login_response:
+#     token = login_response["token"]  # 獲取登入返回的 token
+#     # 使用獲取到的 token 進行使用者資訊查詢
  
-    for reservationData in reservationDatas:
+#     for reservationData in reservationDatas:
      
-        uid = getUsersId(reservationData["ID"], token)
-        uidGroup = getUidGrouop(uid, token) 
-        print(addProcess(token, uidGroup, reservationData))
+#         uid = getUsersId(reservationData["ID"], token)
+#         if not uid:
+#             print("無該案個案")
+#             continue
+#         uidGroup = getUidGrouop(uid, token) 
+#         # print(addProcess(token, uidGroup, reservationData))
         
 
-else:
-    print("登入失敗，未能獲取 token")
+# else:
+#     print("登入失敗，未能獲取 token")

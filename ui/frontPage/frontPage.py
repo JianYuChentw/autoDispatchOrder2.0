@@ -1,8 +1,8 @@
-from PyQt6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout
-from PyQt6.QtCore import Qt
+from PyQt6.QtWidgets import QWidget, QVBoxLayout, QStackedWidget, QLabel
 from .labelWidget import LabelWidget
 from .statusBar import StatusBar
 from .buttonPanel import ButtonPanel
+from ..ProcessingPage.processingPage import ProcessingPage
 
 class FrontPage(QWidget):
     def __init__(self, status_manager):
@@ -11,22 +11,41 @@ class FrontPage(QWidget):
         self.setWindowTitle('首頁')
         self.resize(1000, 600)
 
-        # 主布局 - 水平和垂直居中
-        outer_layout = QHBoxLayout()  # 外層水平方向佈局
-        outer_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)  # 水平居中
+        # 創建 QStackedWidget
+        self.stack_widget = QStackedWidget(self)
 
-        main_layout = QVBoxLayout()  # 垂直佈局
-        main_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)  # 垂直居中
+        # 創建首頁內容
+        home_widget = QWidget()
+        home_layout = QVBoxLayout(home_widget)
 
-        # 添加组件到主布局
+        # 調整布局間距和邊距
+        home_layout.setSpacing(10)  # 設置控件之間的間距
+        home_layout.setContentsMargins(10, 10, 10, 10)  # 設置佈局邊距
+
         label_widget = LabelWidget()
         status_bar = StatusBar(status_manager)  # 傳遞狀態管理器到 StatusBar
-        button_panel = ButtonPanel()
 
-        main_layout.addWidget(label_widget)
-        main_layout.addLayout(status_bar)
-        main_layout.addWidget(button_panel)
+        # 創建 ButtonPanel，並傳遞 stack_widget 和 status_manager
+        button_panel = ButtonPanel(self.stack_widget, status_manager)
 
-        outer_layout.addLayout(main_layout)  # 把垂直佈局加入到水平方向的佈局中
+        home_layout.addWidget(label_widget)
+        home_layout.addLayout(status_bar)
 
-        self.setLayout(outer_layout)  # 將外層佈局設定為主佈局
+        spacer_label = QLabel("")
+        spacer_label.setFixedHeight(40)  # 可以調整這個高度來控制空間大小
+        home_layout.addWidget(spacer_label)
+
+        home_layout.addWidget(button_panel)
+
+        # 將首頁添加到 QStackedWidget 中
+        self.stack_widget.addWidget(home_widget)
+
+        # 創建處理頁面並傳遞 stack_widget 給處理頁面
+        processing_page = ProcessingPage(self.stack_widget)
+        self.stack_widget.addWidget(processing_page)
+
+        # 設置主佈局，將 QStackedWidget 作為唯一控件
+        main_layout = QVBoxLayout(self)
+        main_layout.addWidget(self.stack_widget)
+
+        self.setLayout(main_layout)

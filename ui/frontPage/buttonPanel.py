@@ -1,62 +1,12 @@
-from PyQt6.QtWidgets import QVBoxLayout, QPushButton, QFrame, QDialog, QLabel, QLineEdit, QFormLayout, QDialogButtonBox, QMessageBox, QCheckBox, QHBoxLayout
+from PyQt6.QtWidgets import QVBoxLayout, QPushButton, QFrame, QMessageBox, QDialog
 from PyQt6.QtCore import Qt
+from PyQt6.QtGui import QPixmap
 import os
+from .statusBar import StatusManager
 from service.autoService import loginGetToken
+from ui.dialogs.loginDialog import LoginDialog  # 導入 LoginDialog
 
-class LoginDialog(QDialog):
-    def __init__(self):
-        super().__init__()
-        self.setWindowTitle('登入')
-
-        layout = QVBoxLayout()
-
-        # 創建表單布局
-        form_layout = QFormLayout()
-
-        # 從環境變數讀取帳號和密碼
-        default_username = os.getenv('USER_ACCOUNT', '')
-        default_password = os.getenv('USER_PASSWORD', '')
-
-        # 帳號輸入
-        self.username_input = QLineEdit(self)
-        self.username_input.setPlaceholderText('請輸入帳號')
-        self.username_input.setText(default_username)
-        form_layout.addRow('帳號:', self.username_input)
-
-        # 密碼輸入和顯示/隱藏密碼的按鈕
-        self.password_input = QLineEdit(self)
-        self.password_input.setEchoMode(QLineEdit.EchoMode.Password)  # 設置為密碼模式
-        self.password_input.setPlaceholderText('請輸入密碼')
-        self.password_input.setText(default_password)
-
-        # 顯示/隱藏密碼的按鈕
-        self.show_password_checkbox = QCheckBox("顯示密碼")
-        self.show_password_checkbox.stateChanged.connect(self.toggle_password_visibility)
-
-        # 組合密碼框和顯示/隱藏按鈕
-        password_layout = QHBoxLayout()
-        password_layout.addWidget(self.password_input)
-        password_layout.addWidget(self.show_password_checkbox)
-        form_layout.addRow('密碼:', password_layout)
-
-        layout.addLayout(form_layout)
-
-        # 創建提交和取消按鈕
-        button_box = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel)
-        button_box.accepted.connect(self.accept)
-        button_box.rejected.connect(self.reject)
-        layout.addWidget(button_box)
-
-        self.setLayout(layout)
-
-    def toggle_password_visibility(self):
-        if self.show_password_checkbox.isChecked():
-            self.password_input.setEchoMode(QLineEdit.EchoMode.Normal)
-        else:
-            self.password_input.setEchoMode(QLineEdit.EchoMode.Password)
-
-    def get_credentials(self):
-        return self.username_input.text(), self.password_input.text()
+# from service.autoService import transformExcel  # 假設你有這個函數
 
 class ButtonPanel(QFrame):
     def __init__(self, stack_widget, status_manager):
@@ -69,16 +19,64 @@ class ButtonPanel(QFrame):
         # 創建按鈕並設置固定大小
         systenLogin = QPushButton('系統登入')
         systenLogin.setFixedSize(200, 50)
-        systenLogin.setStyleSheet("font-size: 22px;")
+        systenLogin.setStyleSheet("""
+            QPushButton {
+                font-size: 22px;
+                background-color: #4CAF50;
+                border: none;
+                color: white;
+                padding: 12px 24px;
+                text-align: center;
+                text-decoration: none;
+                border-radius: 12px;
+            }
+            
+            QPushButton:hover {
+                background-color: #45a049;
+            }
+        """)
+
         systenLogin.clicked.connect(self.login_action)
 
         fileTranslate = QPushButton('文件轉換')
         fileTranslate.setFixedSize(200, 50)
         fileTranslate.setStyleSheet("font-size: 22px;")
+        fileTranslate.setStyleSheet("""
+            QPushButton {
+                font-size: 22px;
+                background-color: #A6A6D2;
+                border: none;
+                color: white;
+                padding: 12px 24px;
+                text-align: center;
+                text-decoration: none;
+                border-radius: 12px;
+            }
+            
+            QPushButton:hover {
+                background-color: #9999CC;
+            }
+        """)
+        fileTranslate.clicked.connect(self.transform_file_action)  # 連接文件轉換按鈕的點擊事件
 
         fastAction = QPushButton('快速執行')
         fastAction.setFixedSize(200, 50)
-        fastAction.setStyleSheet("font-size: 22px;")
+        fastAction.setStyleSheet("""
+            QPushButton {
+                font-size: 22px;
+                background-color: #FF5151;
+                border: none;
+                color: white;
+                padding: 12px 24px;
+                text-align: center;
+                text-decoration: none;
+                border-radius: 12px;
+            }
+            
+            QPushButton:hover {
+                background-color: #FF2D2D;
+            }
+        """)
         fastAction.clicked.connect(self.show_processing_page)
 
         # 添加按鈕到按鈕布局
@@ -110,10 +108,37 @@ class ButtonPanel(QFrame):
                 # 更新環境變數
                 os.environ['USER_ACCOUNT'] = username
                 os.environ['USER_PASSWORD'] = password
-            if token == None:
-                self.status_manager.update_login_status("未登入")
+            else:
                 QMessageBox.warning(self, '登入失敗', '帳號或密碼錯誤，請重試。')
 
     def show_processing_page(self):
-        # 切換到處理頁面
+        # 檢查是否已經有 token
+        if not self.status_manager.token:
+            message_box = QMessageBox(self)
+            message_box.setWindowTitle('需要登入')
+            message_box.setText('請先進行系統登入。')
+            
+            # 使用自定義圖示
+            pixmap = QPixmap('ui/img/crossIcon.png')
+            message_box.setIconPixmap(pixmap)
+            
+            message_box.exec()
+            return
+        
+        
+        # 如果有 token，切換到處理頁面
         self.stack_widget.setCurrentIndex(1)
+
+    def transform_file_action(self):
+        selected_file = self.status_manager.get_selected_file()
+        if selected_file:
+            try:
+             
+                # transformExcel(selected_file)
+                print('執行',selected_file)
+                self.status_manager.update_file_status("完成轉換", selected_file)
+                QMessageBox.information(self, '成功', '文件已成功轉換。')
+            except Exception as e:
+                QMessageBox.critical(self, '錯誤', f'文件轉換失敗：{e}')
+        else:
+            QMessageBox.warning(self, '無檔案', '請先選擇一個 Excel 文件。')

@@ -1,4 +1,6 @@
+import json
 from PyQt6.QtWidgets import QWidget, QVBoxLayout, QLabel, QProgressBar, QTextEdit, QHBoxLayout, QPushButton
+from PyQt6.QtCore import Qt
 
 class ProcessingPage(QWidget):
     def __init__(self, stack_widget):
@@ -10,9 +12,9 @@ class ProcessingPage(QWidget):
         # 上部顯示案件數量和處理按鈕
         top_layout = QHBoxLayout()
         
-        case_label = QLabel('案件數量： XXX')
-        case_label.setStyleSheet("font-size: 18px;")
-        top_layout.addWidget(case_label)
+        self.case_label = QLabel('案件數量：')
+        self.case_label.setStyleSheet("font-size: 18px;")
+        top_layout.addWidget(self.case_label)
 
         process_button = QPushButton('開始處理')
         process_button.setFixedSize(100, 40)
@@ -43,9 +45,12 @@ class ProcessingPage(QWidget):
         result_label.setStyleSheet("font-size: 18px;")
         main_layout.addWidget(result_label)
 
-        result_text = QTextEdit()
-        result_text.setPlaceholderText("顯示處理結果")
-        main_layout.addWidget(result_text)
+        self.result_text = QTextEdit()
+        self.result_text.setPlaceholderText("顯示處理結果")
+        self.result_text.setReadOnly(True)  # 設定為只讀模式
+        self.result_text.setStyleSheet("font-size: 16px;")
+        self.result_text.setCursor(Qt.CursorShape.IBeamCursor)  # 設置鼠標為I型光標，方便複製
+        main_layout.addWidget(self.result_text)
 
         # 底部按鈕
         bottom_layout = QHBoxLayout()
@@ -64,6 +69,30 @@ class ProcessingPage(QWidget):
         main_layout.addLayout(bottom_layout)
 
         self.setLayout(main_layout)
+
+    def showEvent(self, event):
+        super().showEvent(event)
+        # 進入頁面時自動讀取 JSON 檔案並更新 UI
+        self.load_json_files()
+
+    def load_json_files(self):
+        try:
+            # 假設兩個 JSON 檔案的路徑
+            file1_path = 'json_save/DeparTure.json'
+            file2_path = 'json_save/ReturnTrip.json'
+
+            with open(file1_path, 'r') as file1, open(file2_path, 'r') as file2:
+                data1 = json.load(file1)
+                data2 = json.load(file2)
+
+                # 假設兩個 JSON 檔案內容都是陣列
+                total_cases = len(data1) + len(data2)
+                self.case_label.setText(f'案件數量： {total_cases}')
+
+                # 顯示處理結果
+                self.result_text.setText(f'已讀取 {total_cases} 筆案件資料')
+        except Exception as e:
+            self.result_text.setText(f'讀取檔案時發生錯誤：{e}')
 
     def go_back(self):
         self.stack_widget.setCurrentIndex(0)  # 切換回首頁

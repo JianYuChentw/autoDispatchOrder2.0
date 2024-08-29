@@ -1,11 +1,83 @@
 import json
 from PyQt6.QtWidgets import QWidget, QVBoxLayout, QLabel, QProgressBar, QTextEdit, QHBoxLayout, QPushButton
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import Qt, QThread, pyqtSignal
+from service.autoService import processSingleReservation, reverProcessSingleReservation
+from util import processReservationDataList, resverProcessReservationDataList
+
+class ProcessingThread(QThread):
+    update_progress = pyqtSignal(int)
+    update_result = pyqtSignal(str)
+
+    def __init__(self, jsonData, jsonData2, token, parent=None):
+        super().__init__(parent)
+        self.jsonData = jsonData
+        self.jsonData2 = jsonData2
+        self.token = token
+
+    def run(self):
+        total_cases = len(self.jsonData) + len(self.jsonData2)
+        processed_cases = 0
+
+        deparTureResults = []
+        returnTripResults = []
+        deparTurErroCase = []
+        returnTripErroCase = []
+
+        # 處理 DeparTure.json 的數據
+
+        for reservationData in self.jsonData:
+            result = processSingleReservation(reservationData, self.token['token'])
+            if result:
+                deparTureResults.append(result)
+                if result['code'] == 500 :
+                    deparTurErroCase.append(result)
+                
+            processed_cases += 1
+            progress_percent = int((processed_cases / total_cases) * 100)
+            self.update_progress.emit(progress_percent)
+            self.update_result.emit(f"處理完成: {processed_cases}/{total_cases} - 去程")
+
+        # 處理 ReturnTrip.json 的數據
+        for reservationData in self.jsonData2:
+            result = reverProcessSingleReservation(reservationData, self.token['token'])
+            if result:
+                returnTripResults.append(result)
+                if result['code'] == 500 :
+                    returnTripErroCase.append(result)
+
+            processed_cases += 1
+            progress_percent = int((processed_cases / total_cases) * 100)
+            self.update_progress.emit(progress_percent)
+            self.update_result.emit(f"處理完成: {processed_cases}/{total_cases} - 回程")
+
+        # 處理結束，發送最終結果
+        self.update_result.emit("所有案件處理完成。")
+
+        for erro_case in deparTurErroCase:
+            formatted_message = (
+                f"<span style='color:red;'>時間: {erro_case['date']} - "
+                f"姓名: {erro_case['caseName']} - "
+                f"失敗原因: {erro_case['message']}</span>"
+            )
+            self.update_result.emit(formatted_message)
+        
+        for erro_case in returnTripErroCase:
+            formatted_message = (
+                f"<span style='color:red;'>時間: {erro_case['date']} - "
+                f"姓名: {erro_case['caseName']} - "
+                f"失敗原因: {erro_case['message']}</span>"
+            )
+            self.update_result.emit(formatted_message)
+
+
+
 
 class ProcessingPage(QWidget):
-    def __init__(self, stack_widget):
+    def __init__(self, stack_widget, status_manager):
         super().__init__()
-        self.stack_widget = stack_widget  # 將 QStackedWidget 傳遞給 ProcessingPage
+        self.stack_widget = stack_widget
+        self.status_manager = status_manager
+        self.processing_thread = None
 
         main_layout = QVBoxLayout()
 
@@ -16,10 +88,11 @@ class ProcessingPage(QWidget):
         self.case_label.setStyleSheet("font-size: 18px;")
         top_layout.addWidget(self.case_label)
 
-        process_button = QPushButton('開始處理')
-        process_button.setFixedSize(100, 40)
-        process_button.setStyleSheet("font-size: 18px;")
-        top_layout.addWidget(process_button)
+        self.process_button = QPushButton('開始處理')
+        self.process_button.setFixedSize(100, 40)
+        self.process_button.setStyleSheet("font-size: 18px;")
+        self.process_button.clicked.connect(self.start_processing)
+        top_layout.addWidget(self.process_button)
 
         main_layout.addLayout(top_layout)
 
@@ -30,13 +103,13 @@ class ProcessingPage(QWidget):
         progress_label.setStyleSheet("font-size: 18px;")
         progress_layout.addWidget(progress_label)
 
-        progress_bar = QProgressBar()
-        progress_bar.setValue(50)
-        progress_layout.addWidget(progress_bar)
+        self.progress_bar = QProgressBar()
+        self.progress_bar.setValue(0)
+        progress_layout.addWidget(self.progress_bar)
 
-        progress_percent = QLabel('XX %')
-        progress_percent.setStyleSheet("font-size: 18px;")
-        progress_layout.addWidget(progress_percent)
+        self.progress_percent = QLabel('0 %')
+        self.progress_percent.setStyleSheet("font-size: 18px;")
+        progress_layout.addWidget(self.progress_percent)
 
         main_layout.addLayout(progress_layout)
 
@@ -70,29 +143,47 @@ class ProcessingPage(QWidget):
 
         self.setLayout(main_layout)
 
-    def showEvent(self, event):
-        super().showEvent(event)
-        # 進入頁面時自動讀取 JSON 檔案並更新 UI
-        self.load_json_files()
+    def start_processing(self):
+        # 確認 token 是否存在
+        if not self.status_manager.token:
+            self.result_text.setText("尚未登入系統，無法處理案件。")
+            return
 
-    def load_json_files(self):
+        token = self.status_manager.token
+
+        # 讀取 JSON 資料
+        deparTurePath = 'json_save/DeparTure.json'
+        returnTripPath = 'json_save/ReturnTrip.json'
+        jsonData = self.load_json_file(deparTurePath)
+        jsonData2 = self.load_json_file(returnTripPath)
+
+        if not jsonData or not jsonData2:
+            self.result_text.setText("讀取 JSON 文件時發生錯誤。")
+            return
+
+        total_cases = len(jsonData) + len(jsonData2)
+        self.case_label.setText(f'案件數量： {total_cases}')
+
+        # 初始化處理線程
+        self.processing_thread = ProcessingThread(processReservationDataList(jsonData), resverProcessReservationDataList(jsonData2), token)
+        self.processing_thread.update_progress.connect(self.update_progress_bar)
+        self.processing_thread.update_result.connect(self.append_result_text)
+        self.processing_thread.start()
+
+    def update_progress_bar(self, value):
+        self.progress_bar.setValue(value)
+        self.progress_percent.setText(f'{value} %')
+
+    def append_result_text(self, text):
+        self.result_text.append(text)
+
+    def load_json_file(self, file_path):
         try:
-            
-            file1_path = 'json_save/DeparTure.json'
-            file2_path = 'json_save/ReturnTrip.json'
-
-            with open(file1_path, 'r') as file1, open(file2_path, 'r') as file2:
-                data1 = json.load(file1)
-                data2 = json.load(file2)
-
-                # 假設兩個 JSON 檔案內容都是陣列
-                total_cases = len(data1) + len(data2)
-                self.case_label.setText(f'案件數量： {total_cases}')
-
-                # 顯示處理結果
-                self.result_text.setText(f'已讀取 {total_cases} 筆案件資料')
+            with open(file_path, 'r') as file:
+                return json.load(file)
         except Exception as e:
             self.result_text.setText(f'讀取檔案時發生錯誤：{e}')
+            return None
 
     def go_back(self):
         self.stack_widget.setCurrentIndex(0)  # 切換回首頁

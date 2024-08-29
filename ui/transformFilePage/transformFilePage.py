@@ -1,7 +1,6 @@
 from ..frontPage.statusBar import StatusManager
 from PyQt6.QtWidgets import QWidget, QVBoxLayout, QPushButton, QLabel, QTextEdit, QMessageBox
 from PyQt6.QtCore import Qt
-from ...service.autoService import getUsersId, getUidGrouop, addProcess
 
 class TransformFilePage(QWidget):
     def __init__(self, stack_widget, status_manager):

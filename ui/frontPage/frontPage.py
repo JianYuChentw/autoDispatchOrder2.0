@@ -42,7 +42,7 @@ class FrontPage(QWidget):
         self.stack_widget.addWidget(home_widget)
 
         # 創建處理頁面並傳遞 stack_widget 給處理頁面
-        processing_page = ProcessingPage(self.stack_widget)
+        processing_page = ProcessingPage(self.stack_widget, status_manager)
         self.stack_widget.addWidget(processing_page)
 
         # 創建文件轉換頁面並添加到 QStackedWidget 中

@@ -4,9 +4,7 @@ from PyQt6.QtGui import QPixmap
 import os
 from .statusBar import StatusManager
 from service.autoService import loginGetToken
-from ui.dialogs.loginDialog import LoginDialog  # 導入 LoginDialog
-
-# from service.autoService import transformExcel  # 假設你有這個函數
+from ui.dialogs.loginDialog import LoginDialog
 
 class ButtonPanel(QFrame):
     def __init__(self, stack_widget, status_manager):
@@ -30,17 +28,14 @@ class ButtonPanel(QFrame):
                 text-decoration: none;
                 border-radius: 12px;
             }
-            
             QPushButton:hover {
                 background-color: #45a049;
             }
         """)
-
         systenLogin.clicked.connect(self.login_action)
 
         fileTranslate = QPushButton('文件轉換')
         fileTranslate.setFixedSize(200, 50)
-        fileTranslate.setStyleSheet("font-size: 22px;")
         fileTranslate.setStyleSheet("""
             QPushButton {
                 font-size: 22px;
@@ -52,12 +47,11 @@ class ButtonPanel(QFrame):
                 text-decoration: none;
                 border-radius: 12px;
             }
-            
             QPushButton:hover {
                 background-color: #9999CC;
             }
         """)
-        fileTranslate.clicked.connect(self.transform_file_action)  # 連接文件轉換按鈕的點擊事件
+        fileTranslate.clicked.connect(self.navigate_to_file_translate_page)  # 連接文件轉換按鈕的點擊事件
 
         fastAction = QPushButton('快速執行')
         fastAction.setFixedSize(200, 50)
@@ -72,7 +66,6 @@ class ButtonPanel(QFrame):
                 text-decoration: none;
                 border-radius: 12px;
             }
-            
             QPushButton:hover {
                 background-color: #FF2D2D;
             }
@@ -125,20 +118,9 @@ class ButtonPanel(QFrame):
             message_box.exec()
             return
         
-        
         # 如果有 token，切換到處理頁面
         self.stack_widget.setCurrentIndex(1)
 
-    def transform_file_action(self):
-        selected_file = self.status_manager.get_selected_file()
-        if selected_file:
-            try:
-             
-                # transformExcel(selected_file)
-                print('執行',selected_file)
-                self.status_manager.update_file_status("完成轉換", selected_file)
-                QMessageBox.information(self, '成功', '文件已成功轉換。')
-            except Exception as e:
-                QMessageBox.critical(self, '錯誤', f'文件轉換失敗：{e}')
-        else:
-            QMessageBox.warning(self, '無檔案', '請先選擇一個 Excel 文件。')
+    def navigate_to_file_translate_page(self):
+        # 無論是否已經登入，都可以切換到文件轉換頁面
+        self.stack_widget.setCurrentIndex(2)  # 假設文件轉換頁面的索引為2

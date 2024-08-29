@@ -77,7 +77,7 @@ class ProcessingPage(QWidget):
 
     def load_json_files(self):
         try:
-            # 假設兩個 JSON 檔案的路徑
+            
             file1_path = 'json_save/DeparTure.json'
             file2_path = 'json_save/ReturnTrip.json'
 

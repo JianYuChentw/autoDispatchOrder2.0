@@ -2,7 +2,8 @@ from PyQt6.QtWidgets import QWidget, QVBoxLayout, QStackedWidget, QLabel
 from .labelWidget import LabelWidget
 from .statusBar import StatusBar
 from .buttonPanel import ButtonPanel
-from ..ProcessingPage.processingPage import ProcessingPage
+from ..processingPage.processingPage import ProcessingPage
+from ..transformFilePage.transformFilePage import TransformFilePage  
 
 class FrontPage(QWidget):
     def __init__(self, status_manager):
@@ -43,6 +44,10 @@ class FrontPage(QWidget):
         # 創建處理頁面並傳遞 stack_widget 給處理頁面
         processing_page = ProcessingPage(self.stack_widget)
         self.stack_widget.addWidget(processing_page)
+
+        # 創建文件轉換頁面並添加到 QStackedWidget 中
+        transform_file_page = TransformFilePage(self.stack_widget, status_manager)
+        self.stack_widget.addWidget(transform_file_page)
 
         # 設置主佈局，將 QStackedWidget 作為唯一控件
         main_layout = QVBoxLayout(self)

@@ -42,9 +42,21 @@ def getUsersId(IdKey, token):
             return {'code': 200, "message":"無該個案", "caseId":None}
         
         if data.get('code') == 200 and 'data' in data:
-            ids = data['data'][0]['caseList'][0]['caseId']
-            print(f"獲取到的caseId: {ids}")
-            return {'code': 200, "message":"取得資訊", "caseId":int(ids) }
+            # 過濾出 isEnable 為 True 的項目
+            enabled_cases = [case for case in data['data'][0]['caseList'] if case.get('isEnable')]
+
+            if enabled_cases:
+                # 如果有符合條件的項目，取出第一個項目的 caseId
+                ids = enabled_cases[0]['caseId']
+                print(f"獲取到的caseId: {ids}")
+                return {'code': 200, "message": "取得資訊", "caseId": int(ids)}
+            else:
+                print("未找到啟用的案件")
+                return {'code': 404, "message": "未找到啟用的案件"}
+
+        # 若不符合上述條件
+        return {'code': 400, "message": "請求失敗"}
+
     else:
         if data.get['code'] == 401:
             return {'code': 401, "message":"登入失敗", "caseId":None}

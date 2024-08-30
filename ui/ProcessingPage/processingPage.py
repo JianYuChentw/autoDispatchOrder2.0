@@ -51,23 +51,26 @@ class ProcessingThread(QThread):
             self.update_result.emit(f"處理完成: {processed_cases}/{total_cases} - 回程")
 
         # 處理結束，發送最終結果
-        self.update_result.emit("所有案件處理完成。")
+        
 
         for erro_case in deparTurErroCase:
             formatted_message = (
-                f"<span style='color:red;'>時間: {erro_case['date']} - "
-                f"姓名: {erro_case['caseName']} - "
-                f"失敗原因: {erro_case['message']}</span>"
+                f"<span style='color:#008080;'>時間: {erro_case['date']} - "
+                f"姓名: {erro_case['caseName']}</span> - "
+                f"<span style='color:red;'>失敗原因: {erro_case['message']}</span>"
             )
             self.update_result.emit(formatted_message)
-        
+
         for erro_case in returnTripErroCase:
             formatted_message = (
-                f"<span style='color:red;'>時間: {erro_case['date']} - "
-                f"姓名: {erro_case['caseName']} - "
-                f"失敗原因: {erro_case['message']}</span>"
+                f"<span style='color:#008080;'>時間: {erro_case['date']} - "
+                f"姓名: {erro_case['caseName']}</span> - "
+                f"<span style='color:red;'>失敗原因: {erro_case['message']}</span>"
             )
             self.update_result.emit(formatted_message)
+
+        # 所有案件處理完成，恢復預設顏色
+        self.update_result.emit("所有案件處理完成。")
 
 
 
@@ -89,8 +92,22 @@ class ProcessingPage(QWidget):
         top_layout.addWidget(self.case_label)
 
         self.process_button = QPushButton('開始處理')
-        self.process_button.setFixedSize(100, 40)
-        self.process_button.setStyleSheet("font-size: 18px;")
+        self.process_button.setFixedSize(120, 40)
+        self.process_button.setStyleSheet("""
+            QPushButton {
+                font-size: 18px;
+                background-color: #FF5151;
+                border: none;
+                color: white;
+                padding: 12px 24px;
+                text-align: center;
+                text-decoration: none;
+                border-radius: 12px;
+            }
+            QPushButton:hover {
+                background-color: #FF2D2D;
+            }
+        """)
         self.process_button.clicked.connect(self.start_processing)
         top_layout.addWidget(self.process_button)
 

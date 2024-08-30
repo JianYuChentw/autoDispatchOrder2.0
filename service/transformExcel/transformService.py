@@ -78,22 +78,23 @@ def hospitalConversion(hospitalName, case_name):
         return hospitalData[cleanedHospitalName]
     else:
         # 打印未登載資料的警告訊息（可以用來進行紀錄或除錯）
-        print(f"\033[31m未登載資料院所: \033[37m{case_name} \033[33m{hospitalName}\033[0m")
+        # print(f"\033[31m未登載資料院所: \033[37m{case_name} \033[33m{hospitalName}\033[0m")
         return False
     
 
 # 取地址備註
 def extractContentInLastParentheses(inputText):
     specialLocation = loadJson('jsonSave/hospitalSpecialLocationSave.json')
-    # 過濾地點備註的正則表達式
-    regex = r'\(([^)]+)\)(?![^(]*\))'
+    # 過濾地點備註的正則表達式，包含括號
+    regex = r'\([^)]*\)(?![^(]*\))'
     matches = re.findall(regex, inputText)
 
     # 特殊地點加入備註
     if inputText in specialLocation:
         if not matches:
             matches = []
-        matches.append(specialLocation[inputText])
+        # 將特殊地點的備註加上括號並添加到 matches
+        matches.append(f"({specialLocation[inputText]})")
 
     if matches:
         return ''.join(matches)
@@ -145,6 +146,7 @@ def extractDataFromDepartureExcel(filePath):
 
     departureResult = []
     returnTripResult = []
+    unresolvedCases = []  # 新增一個陣列來儲存未解決的案件
 
     for row in data:
         typeCode = row['碼別'] == '長照'
@@ -152,19 +154,23 @@ def extractDataFromDepartureExcel(filePath):
             print(f"\033[31m非長照碼別\033[37m {roundToNearestQuarterHour(convertTime(row['時間']))} {row['個案姓名']} {row['碼別']}\033[33m")
             continue
 
-        departure = hospitalConversion(
-            removeContentInLastParentheses(row['上車地點']).replace('\r\n', ' '),
-            row['個案姓名']
-        )
+        # 先移除括弧中的內容，再替換換行符
+        raw_departure = removeContentInLastParentheses(row['上車地點']).replace('\r\n', '')
+        raw_destination = removeContentInLastParentheses(row['下車地點']).replace('\r\n', '')
 
-        destination = hospitalConversion(
-            removeContentInLastParentheses(row['下車地點']).replace('\r\n', ' '),
-            row['個案姓名']
-        )
+        departure = hospitalConversion(raw_departure, row['個案姓名'])
+        destination = hospitalConversion(raw_destination, row['個案姓名'])
 
         # 根據需求過濾資料
-        if (departure and destination) or (not departure and not destination):
-            print(f"\033[31m未登載資料院所\033[37m {roundToNearestQuarterHour(convertTime(row['時間']))} {row['個案姓名']} {row['上車地點']} {row['下車地點']}\033[33m")
+        if departure is False and destination is False:
+            unresolvedCase = {
+                'Time': roundToNearestQuarterHour(convertTime(row['時間'])),
+                'CaseName': row['個案姓名'],
+                'Departure': row['上車地點'],
+                'Destination': row['下車地點']
+            }
+            unresolvedCases.append(unresolvedCase)  # 加入未解決的案件到陣列中
+            print(f"\033[31m未登載資料院所\033[37m {unresolvedCase['Time']} {unresolvedCase['CaseName']} {unresolvedCase['Departure']} {unresolvedCase['Destination']}\033[33m")
             continue
 
         result = None
@@ -174,7 +180,7 @@ def extractDataFromDepartureExcel(filePath):
                 'Time': roundToNearestQuarterHour(convertTime(row['時間'])),
                 'ID': row['身分證號'],
                 'CaseName': row['個案姓名'],
-                'Departure': removeContentInLastParentheses(row['上車地點']).replace('\r\n', ' '),
+                'Departure': raw_departure,
                 'Destination': destination or row['下車地點'],
                 'Accompany1': mapEquipmentToVehicle(row['備註']),
                 'WheelchairType': wheelchairTypeSwitch(row['備註']),
@@ -197,7 +203,7 @@ def extractDataFromDepartureExcel(filePath):
                 'ID': row['身分證號'],
                 'CaseName': row['個案姓名'],
                 'Departure': departure or row['上車地點'],
-                'Destination': removeContentInLastParentheses(row['下車地點']).replace('\r\n', ' '),
+                'Destination': raw_destination,
                 'Accompany1': mapEquipmentToVehicle(row['備註']),
                 'WheelchairType': wheelchairTypeSwitch(row['備註']),
                 'Accompany2': ' '.join(
@@ -213,26 +219,51 @@ def extractDataFromDepartureExcel(filePath):
             }
             returnTripResult.append(result)
 
-    return {'departureResult': departureResult, 'returnTripResult': returnTripResult}
+    # 回傳時新增 unresolvedCases
+    return {
+        'departureResult': departureResult,
+        'returnTripResult': returnTripResult,
+        'unresolvedCases': unresolvedCases
+    }
 
-# 提取數據
+
+
+# 測試提取數據
 formatted_data = extractDataFromDepartureExcel('/Users/jian-yuchen/Desktop/autoDispatchOrder2.0/test.xlsx')
+# print(formatted_data)
 
-# 獲取環境變量中的 JSON 文件保存路徑
-# departure_json_file_path = os.getenv('TEST_RETURN_TRIP_JSON')
 # 自定義的 JSON 序列化器，用來處理 date 類型
-
 def json_serial(obj):
     if isinstance(obj, (date,)):
         return obj.isoformat()
     raise TypeError(f"Type {obj.__class__.__name__} not serializable")
 
 departure_json_file_path = "jsonSave/TTDeparTure.json"
-print(departure_json_file_path)
+rdeparture_json_file_path = "jsonSave/rRDeparTure.json"
 
-# 將格式化的數據寫入 JSON 文件
+# 確保formatted_data包含departureResult和returnTripResult
+departure_result = formatted_data.get('departureResult', [])
+return_trip_result = formatted_data.get('returnTripResult', [])
+unresolved_cases = formatted_data.get('unresolvedCases', [])  # 取得未解決案件的資料
+
+# 將departureResult寫入對應的JSON文件
 if departure_json_file_path:
     with open(departure_json_file_path, 'w', encoding='utf-8') as json_file:
-        json.dump(formatted_data, json_file, ensure_ascii=False, indent=2, default=json_serial)
+        json.dump(departure_result, json_file, ensure_ascii=False, indent=2, default=json_serial)
 else:
-    print("環境變量 'TEST_RETURN_TRIP_JSON' 未設置。")
+    print("環境變量 'departure_json_file_path' 未設置。")
+
+# 將returnTripResult寫入對應的JSON文件
+if rdeparture_json_file_path:
+    with open(rdeparture_json_file_path, 'w', encoding='utf-8') as json_file:
+        json.dump(return_trip_result, json_file, ensure_ascii=False, indent=2, default=json_serial)
+else:
+    print("環境變量 'rdeparture_json_file_path' 未設置。")
+
+# 打印未解決案件
+if unresolved_cases:
+    print("\033[31m未解決的案件列表:\033[0m")
+    for case in unresolved_cases:
+        print(f"時間: {case['Time']}, 姓名: {case['CaseName']}, 上車地點: {case['Departure']}, 下車地點: {case['Destination']}")
+else:
+    print("無未解決案件。")

@@ -28,7 +28,7 @@ class TransformFilePage(QWidget):
                 background-color: #45a049;
             }
         """)
-        self.start_button.clicked.connect(self.start_file_conversion)
+        self.start_button.clicked.connect(self.startFileConversion)
 
         # 標籤：轉換結果
         self.result_label = QLabel('轉換結果：')
@@ -67,7 +67,7 @@ class TransformFilePage(QWidget):
 
         self.setLayout(layout)
 
-    def start_file_conversion(self):
+    def startFileConversion(self):
         # 獲取選中的文件
         selected_file = self.status_manager.get_selected_file()
         if selected_file:

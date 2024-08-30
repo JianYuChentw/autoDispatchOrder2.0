@@ -4,7 +4,7 @@ import sys
 # sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from dotenv import load_dotenv
 from service.autoSettings import page_data  
-from util import (load_json, processReservationDataList)
+from util import (loadJson, processReservationDataList)
 from service.apiService import (sendPostRequest, sendGetRequest )
 
 
@@ -227,8 +227,8 @@ def reverProcessSingleReservation(reservationData, token):
 
 #### 測試區
 
-# jsonData = load_json('json_save/DeparTure.json')
-# jsonData2 = load_json('json_save/ReturnTrip.json')
+# jsonData = loadJson('jsonSave/DeparTure.json')
+# jsonData2 = loadJson('jsonSave/ReturnTrip.json')
 # payload = {
 #         "Account": os.getenv('USER_ACCOUNT'),
 #         "Password": os.getenv('USER_PASSWORD'),

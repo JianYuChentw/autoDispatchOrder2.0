@@ -152,8 +152,8 @@ class ProcessingPage(QWidget):
         token = self.status_manager.token
 
         # 讀取 JSON 資料
-        deparTurePath = 'json_save/DeparTure.json'
-        returnTripPath = 'json_save/ReturnTrip.json'
+        deparTurePath = 'jsonSave/DeparTure.json'
+        returnTripPath = 'jsonSave/ReturnTrip.json'
         jsonData = self.load_json_file(deparTurePath)
         jsonData2 = self.load_json_file(returnTripPath)
 

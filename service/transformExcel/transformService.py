@@ -1,7 +1,6 @@
 import re, openpyxl, os, json
 from datetime import date
-from transformTool import convertTime, format24Hour, convertDate, loadJson
-
+from .transformTool import convertTime, format24Hour, convertDate, loadJson
 
 
 # 時間重構
@@ -155,19 +154,24 @@ def extractDataFromDepartureExcel(filePath):
             continue
 
         # 先移除括弧中的內容，再替換換行符
-        raw_departure = removeContentInLastParentheses(row['上車地點']).replace('\r\n', '')
-        raw_destination = removeContentInLastParentheses(row['下車地點']).replace('\r\n', '')
-
+        raw_departure = removeContentInLastParentheses(row['上車地點']).replace('\r\n', '').replace('\n', '').replace('\r', '').strip()
+        raw_destination = removeContentInLastParentheses(row['下車地點']).replace('\r\n', '').replace('\n', '').replace('\r', '').strip()
+        
         departure = hospitalConversion(raw_departure, row['個案姓名'])
         destination = hospitalConversion(raw_destination, row['個案姓名'])
 
         # 根據需求過濾資料
         if departure is False and destination is False:
+            
+            #  移除換行符號 
+            cleaned_departure = row['上車地點'].replace('\r\n', '').replace('\n', '').replace('\r', '').strip()
+            cleaned_destination = row['下車地點'].replace('\r\n', '').replace('\n', '').replace('\r', '').strip()
+
             unresolvedCase = {
                 'Time': roundToNearestQuarterHour(convertTime(row['時間'])),
                 'CaseName': row['個案姓名'],
-                'Departure': row['上車地點'],
-                'Destination': row['下車地點']
+                'Departure': cleaned_departure,
+                'Destination': cleaned_destination
             }
             unresolvedCases.append(unresolvedCase)  # 加入未解決的案件到陣列中
             print(f"\033[31m未登載資料院所\033[37m {unresolvedCase['Time']} {unresolvedCase['CaseName']} {unresolvedCase['Departure']} {unresolvedCase['Destination']}\033[33m")
@@ -181,10 +185,10 @@ def extractDataFromDepartureExcel(filePath):
                 'ID': row['身分證號'],
                 'CaseName': row['個案姓名'],
                 'Departure': raw_departure,
-                'Destination': destination or row['下車地點'],
-                'Accompany1': mapEquipmentToVehicle(row['備註']),
-                'WheelchairType': wheelchairTypeSwitch(row['備註']),
-                'Accompany2': ' '.join(
+                'destination': destination or row['下車地點'],
+                'accompany1': mapEquipmentToVehicle(row['備註']),
+                'wheelchairType': wheelchairTypeSwitch(row['備註']),
+                'accompany2': ' '.join(
                     filter(None, [
                         checkAndFormatTime(row['時間']),
                         extractContentInLastParentheses(row['上車地點']),
@@ -203,10 +207,10 @@ def extractDataFromDepartureExcel(filePath):
                 'ID': row['身分證號'],
                 'CaseName': row['個案姓名'],
                 'Departure': departure or row['上車地點'],
-                'Destination': raw_destination,
-                'Accompany1': mapEquipmentToVehicle(row['備註']),
-                'WheelchairType': wheelchairTypeSwitch(row['備註']),
-                'Accompany2': ' '.join(
+                'destination': raw_destination,
+                'accompany1': mapEquipmentToVehicle(row['備註']),
+                'wheelchairType': wheelchairTypeSwitch(row['備註']),
+                'accompany2': ' '.join(
                     filter(None, [
                         checkAndFormatTime(row['時間']),
                         extractContentInLastParentheses(row['下車地點']),
@@ -226,44 +230,44 @@ def extractDataFromDepartureExcel(filePath):
         'unresolvedCases': unresolvedCases
     }
 
-
-
-# 測試提取數據
-formatted_data = extractDataFromDepartureExcel('/Users/jian-yuchen/Desktop/autoDispatchOrder2.0/test.xlsx')
-# print(formatted_data)
-
-# 自定義的 JSON 序列化器，用來處理 date 類型
+# # 自定義的 JSON 序列化器，用來處理 date 類型
 def json_serial(obj):
     if isinstance(obj, (date,)):
         return obj.isoformat()
     raise TypeError(f"Type {obj.__class__.__name__} not serializable")
 
-departure_json_file_path = "jsonSave/TTDeparTure.json"
-rdeparture_json_file_path = "jsonSave/rRDeparTure.json"
 
-# 確保formatted_data包含departureResult和returnTripResult
-departure_result = formatted_data.get('departureResult', [])
-return_trip_result = formatted_data.get('returnTripResult', [])
-unresolved_cases = formatted_data.get('unresolvedCases', [])  # 取得未解決案件的資料
+# 測試提取數據
+# formatted_data = extractDataFromDepartureExcel('/Users/jian-yuchen/Desktop/autoDispatchOrder2.0/test.xlsx')
+# # print(formatted_data)
 
-# 將departureResult寫入對應的JSON文件
-if departure_json_file_path:
-    with open(departure_json_file_path, 'w', encoding='utf-8') as json_file:
-        json.dump(departure_result, json_file, ensure_ascii=False, indent=2, default=json_serial)
-else:
-    print("環境變量 'departure_json_file_path' 未設置。")
 
-# 將returnTripResult寫入對應的JSON文件
-if rdeparture_json_file_path:
-    with open(rdeparture_json_file_path, 'w', encoding='utf-8') as json_file:
-        json.dump(return_trip_result, json_file, ensure_ascii=False, indent=2, default=json_serial)
-else:
-    print("環境變量 'rdeparture_json_file_path' 未設置。")
+# departure_json_file_path = "jsonSave/TTDeparTure.json"
+# rdeparture_json_file_path = "jsonSave/rRDeparTure.json"
 
-# 打印未解決案件
-if unresolved_cases:
-    print("\033[31m未解決的案件列表:\033[0m")
-    for case in unresolved_cases:
-        print(f"時間: {case['Time']}, 姓名: {case['CaseName']}, 上車地點: {case['Departure']}, 下車地點: {case['Destination']}")
-else:
-    print("無未解決案件。")
+# # 確保formatted_data包含departureResult和returnTripResult
+# departure_result = formatted_data.get('departureResult', [])
+# return_trip_result = formatted_data.get('returnTripResult', [])
+# unresolved_cases = formatted_data.get('unresolvedCases', [])  # 取得未解決案件的資料
+
+# # 將departureResult寫入對應的JSON文件
+# if departure_json_file_path:
+#     with open(departure_json_file_path, 'w', encoding='utf-8') as json_file:
+#         json.dump(departure_result, json_file, ensure_ascii=False, indent=2, default=json_serial)
+# else:
+#     print("環境變量 'departure_json_file_path' 未設置。")
+
+# # 將returnTripResult寫入對應的JSON文件
+# if rdeparture_json_file_path:
+#     with open(rdeparture_json_file_path, 'w', encoding='utf-8') as json_file:
+#         json.dump(return_trip_result, json_file, ensure_ascii=False, indent=2, default=json_serial)
+# else:
+#     print("環境變量 'rdeparture_json_file_path' 未設置。")
+
+# # 打印未解決案件
+# if unresolved_cases:
+#     print("\033[31m未解決的案件列表:\033[0m")
+#     for case in unresolved_cases:
+#         print(f"時間: {case['Time']}, 姓名: {case['CaseName']}, 上車地點: {case['Departure']}, 下車地點: {case['Destination']}")
+# else:
+#     print("無未解決案件。")

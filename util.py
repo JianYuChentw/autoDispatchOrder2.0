@@ -6,12 +6,11 @@ def loadJson(filePath):
 
 def processReservationDataList(dataList):
     processedList = []
-    
     for data in dataList:
         ID = data['ID']
         CaseName = data['CaseName']
         reserveDate = f"{data['Date']} {data['Time']}"    
-        toAddr = data['destination']
+        toAddr = data["destination"]
         wheelchairType = data["wheelchairType"]
         remark = data["accompany2"]
         

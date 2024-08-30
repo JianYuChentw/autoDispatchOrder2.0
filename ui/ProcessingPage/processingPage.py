@@ -203,4 +203,9 @@ class ProcessingPage(QWidget):
             return None
 
     def go_back(self):
+        total_cases = 0
+        self.result_text.clear()  # 清空處理結果顯示
+        self.case_label.setText(f'案件數量： {total_cases}')
+        self.progress_bar.setValue(0)  # 重置进度条
+        self.progress_percent.setText('0 %')  # 重置进度百分比显示
         self.stack_widget.setCurrentIndex(0)  # 切換回首頁

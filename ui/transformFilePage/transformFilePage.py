@@ -1,6 +1,13 @@
 from ..frontPage.statusBar import StatusManager
 from PyQt6.QtWidgets import QWidget, QVBoxLayout, QPushButton, QLabel, QTextEdit, QMessageBox
 from PyQt6.QtCore import Qt
+import os, json
+from dotenv import load_dotenv
+from service.transformExcel.transformService import extractDataFromDepartureExcel, json_serial
+from util import processReservationDataList, resverProcessReservationDataList
+load_dotenv()
+
+
 
 class TransformFilePage(QWidget):
     def __init__(self, stack_widget, status_manager):
@@ -72,19 +79,59 @@ class TransformFilePage(QWidget):
         selected_file = self.status_manager.get_selected_file()
         if selected_file:
             try:
+                # 導入環境變數
+                departure_json_file_path = os.getenv('DEPARTURE_JSON')
+                rdeparture_json_file_path = os.getenv('RETURN_TRIP_JSON')
+        
                 # 執行文件轉換
-                # transformExcel(selected_file)
+                formatted_data = extractDataFromDepartureExcel(selected_file)
+                
+
+                departure_result = formatted_data.get('departureResult', [])
+                return_trip_result = formatted_data.get('returnTripResult', [])
+                # 檢查未解決案件
+                unresolved_cases = formatted_data.get('unresolvedCases', [])
+                
+                if unresolved_cases:
+                    # 打印未解決的案件
+                    unresolved_messages = "\n".join(
+                        [f"時間: {case['Time']}, 姓名: {case['CaseName']}, 上車地點: {case['Departure']}, 下車地點: {case['Destination']}"
+                        for case in unresolved_cases]
+                    )
+                    self.result_text.setText(f"文件 {selected_file} 已轉換，但有未解決案件：\n{unresolved_messages}")
+                    QMessageBox.warning(self, '部分失敗', '文件已轉換，但有部分案件未能解決。')
+                else:
+                    # 如果所有案件都已解決
+                    self.result_text.setText(f"文件 {selected_file} 已成功轉換，所有案件已處理完畢。")
+                    QMessageBox.information(self, '成功', '文件已成功轉換，所有案件已處理完畢。')
+
+                # 將departureResult寫入對應的JSON文件
+                if departure_json_file_path:
+                    with open(departure_json_file_path, 'w', encoding='utf-8') as json_file:
+                        json.dump(departure_result, json_file, ensure_ascii=False, indent=2, default=json_serial)
+                else:
+                    print("環境變量 'departure_json_file_path' 未設置。")
+
+
+                # 將returnTripResult寫入對應的JSON文件
+                if rdeparture_json_file_path:
+                    with open(rdeparture_json_file_path, 'w', encoding='utf-8') as json_file:
+                        json.dump(return_trip_result, json_file, ensure_ascii=False, indent=2, default=json_serial)
+                else:
+                    print("環境變量 'rdeparture_json_file_path' 未設置。")
+
+
+                # 更新狀態
                 self.status_manager.update_file_status("完成轉換", selected_file)
 
-                # 更新結果到文本框
-                self.result_text.setText(f"文件 {selected_file} 已成功轉換。")
-                QMessageBox.information(self, '成功', '文件已成功轉換。')
-
             except Exception as e:
+                # 處理異常情況
                 self.result_text.setText(f"文件轉換失敗：{e}")
                 QMessageBox.critical(self, '錯誤', f'文件轉換失敗：{e}')
         else:
+            # 未選擇文件時的提示
             QMessageBox.warning(self, '無檔案', '請先選擇一個 Excel 文件。')
+
 
     def go_back(self):
         # 返回到前一個頁面，假設它是 QStackedWidget 的索引 0
